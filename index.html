@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLMOps 04 — Cost &amp; SLOs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #0d1117;
+            --bg-code: #161b22;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #76B900;
+            --accent-dim: #76B90044;
+            --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 2rem;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+            color: #c9d1d9;
+        }
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(118, 185, 0, 0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .kw { color: #ff7b72; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .dir { color: #ff7b72; }
+        .mac { color: #ffa657; }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .hierarchy-level { display: flex; align-items: center; gap: 0.75rem; }
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+        .hierarchy-items { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
+        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">Production LLMOps Series &mdash; Presentation 04</div>
+    <h1>LLM <span class="accent">Cost &amp; SLOs</span></h1>
+    <p class="subtitle">Token economics, TTFT / TPS / p95, per-task cost, capacity planning, rate limiting, SLO design, budget enforcement, and forecasting &mdash; the numbers that keep production healthy.</p>
+
+    <div class="tags">
+        <span class="tag">Token Economics</span>
+        <span class="tag">TTFT</span>
+        <span class="tag">TPS</span>
+        <span class="tag">Capacity Planning</span>
+        <span class="tag">Token Bucket</span>
+        <span class="tag">SLO</span>
+        <span class="tag">Chargeback</span>
+    </div>
+
+    <div class="pipeline">
+        <span class="pipeline-step">Cost Model</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Latency Metrics</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Per-Task Cost</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Capacity</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Rate Limit</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">SLO</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Budget</span>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Topics We&rsquo;ll Cover</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">Token Cost Economics &mdash; Input vs Output, Cached, Batched</a></li>
+        <li><a href="#slide-02">Throughput vs Latency &mdash; TTFT, TPS, p95 Token-Out</a></li>
+        <li><a href="#slide-03">Per-Task Cost Metric &mdash; Cost-per-Resolved-Ticket</a></li>
+        <li><a href="#slide-04">Capacity Planning &mdash; Concurrency, Queue Depth</a></li>
+        <li><a href="#slide-05">Rate Limiting &mdash; Token Bucket, Fairness Across Tenants</a></li>
+        <li><a href="#slide-06">SLO Design &mdash; Availability, Quality, Latency</a></li>
+        <li><a href="#slide-07">Budget Enforcement &mdash; Alerts, Hard Limits, Chargeback</a></li>
+        <li><a href="#slide-08">Forecasting &mdash; Usage Growth, Model-Cost Falls</a></li>
+        <li><a href="#slide-09">What to Take Away</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>Token Cost Economics &mdash; Input vs Output, Cached, Batched</h2>
+    <p>LLM cost is not a flat rate per request. It is the sum of token counts at different prices depending on the token&rsquo;s origin and processing mode. Modelling this correctly is the foundation of every cost metric.</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Token category</th><th>gpt-4o (Apr 2025)</th><th>claude-3-5-sonnet (Apr 2025)</th><th>Key point</th></tr></thead>
+            <tbody>
+                <tr><td>Input (uncached)</td><td>$2.50 / M tok</td><td>$3.00 / M tok</td><td>Standard rate; baseline for all comparisons</td></tr>
+                <tr><td>Input (cached read)</td><td>$1.25 / M tok</td><td>$0.30 / M tok</td><td>50% and 90% discount respectively</td></tr>
+                <tr><td>Cache write (Anthropic only)</td><td>&mdash;</td><td>$3.75 / M tok</td><td>1.25&times; write penalty; amortised over reads</td></tr>
+                <tr><td>Output</td><td>$10.00 / M tok</td><td>$15.00 / M tok</td><td>4&times; input price; output volume dominates cost</td></tr>
+                <tr><td>Batch input</td><td>$1.25 / M tok</td><td>$1.50 / M tok</td><td>50% off; &ge;24 h turnaround; not for interactive</td></tr>
+                <tr><td>Batch output</td><td>$5.00 / M tok</td><td>$7.50 / M tok</td><td>50% off output too; significant for heavy generation</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Cost formula</h3>
+    <div class="callout">
+        <div class="callout-label">Per-request cost model</div>
+        <p><strong>cost</strong> = (input_uncached &times; p_in) + (input_cached_write &times; p_write) + (input_cached_read &times; p_read) + (output &times; p_out)</p>
+        <p>For a typical support-bot request with a 4 K-token system prompt (cached after first call), 500-token user message, and 300-token response on <code>gpt-4o</code>: <strong>write call</strong> = (4000 &times; $2.50 + 500 &times; $2.50 + 300 &times; $10.00) / 1e6 = <strong>$0.014</strong>. <strong>Subsequent reads</strong> = (4000 &times; $1.25 + 500 &times; $2.50 + 300 &times; $10.00) / 1e6 = <strong>$0.009</strong>. Cache saves 36% per call after warm-up.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>Throughput vs Latency &mdash; TTFT, TPS, p95 Token-Out</h2>
+    <p>LLM latency has a two-phase structure that is fundamentally different from a conventional HTTP call. Measuring only total duration misses the part that users feel most.</p>
+
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 180" width="720" height="180" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .tl-box { fill: #161b22; stroke: #30363d; }
+                .tl-acc { fill: rgba(118,185,0,0.1); stroke: #76B900; }
+                .tl-lbl { fill: #e6edf3; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12px; }
+                .tl-sub { fill: #8b949e; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+                .tl-arr { stroke: #76B900; stroke-width: 1.5; fill: none; marker-end: url(#tla); }
+                .tl-brc { stroke: #ffa657; stroke-width: 1; fill: none; }
+            </style>
+            <defs>
+                <marker id="tla" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#76B900"/>
+                </marker>
+            </defs>
+            <text x="10" y="20" class="tl-lbl">Request timeline</text>
+            <line x1="30"  y1="50" x2="690" y2="50" stroke="#21262d" stroke-width="1"/>
+
+            <rect x="30"  y="60" width="80"  height="30" rx="3" class="tl-box"/><text x="40" y="79" class="tl-sub">prefill</text>
+            <rect x="110" y="60" width="30"  height="30" rx="3" class="tl-acc"/><text x="115" y="79" class="tl-sub">1st tok</text>
+            <rect x="140" y="60" width="400" height="30" rx="3" class="tl-box"/><text x="280" y="79" class="tl-sub">decode / generation</text>
+            <rect x="540" y="60" width="60"  height="30" rx="3" class="tl-box"/><text x="548" y="79" class="tl-sub">last tok</text>
+
+            <line x1="30"  y1="100" x2="140" y2="100" class="tl-brc"/>
+            <line x1="30"  y1="96" x2="30" y2="104" stroke="#ffa657"/>
+            <line x1="140" y1="96" x2="140" y2="104" stroke="#ffa657"/>
+            <text x="55"  y="118" class="tl-sub" fill="#ffa657">TTFT</text>
+            <text x="15"  y="132" class="tl-sub" fill="#ffa657">(time-to-first-token)</text>
+
+            <line x1="140" y1="130" x2="600" y2="130" class="tl-brc"/>
+            <line x1="140" y1="126" x2="140" y2="134" stroke="#ffa657"/>
+            <line x1="600" y1="126" x2="600" y2="134" stroke="#ffa657"/>
+            <text x="310" y="148" class="tl-sub" fill="#ffa657">output token stream (TPS measured here)</text>
+
+            <line x1="30"  y1="165" x2="600" y2="165" class="tl-brc"/>
+            <line x1="30"  y1="161" x2="30" y2="169" stroke="#76B900"/>
+            <line x1="600" y1="161" x2="600" y2="169" stroke="#76B900"/>
+            <text x="270" y="178" class="tl-sub" fill="#76B900">E2E latency (total duration)</text>
+        </svg>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Metric</th><th>Definition</th><th>Typical values (gpt-4o, 2025)</th><th>SLO relevance</th></tr></thead>
+            <tbody>
+                <tr><td><strong>TTFT</strong></td><td>Wall-clock from request sent to first token received</td><td>300&ndash;800 ms uncached; 100&ndash;300 ms cached prefix</td><td>Critical for interactive UX; users feel &gt;500 ms</td></tr>
+                <tr><td><strong>TPS (output)</strong></td><td>Output tokens / decode duration</td><td>40&ndash;80 tok/s for 4o; 20&ndash;40 for Opus 3</td><td>Reading speed comfort &asymp; 30 tok/s (&asymp; 150 wpm)</td></tr>
+                <tr><td><strong>p95 E2E</strong></td><td>95th-percentile total duration over 1-hour window</td><td>4&ndash;12 s for 300-token output</td><td>Hard SLO ceiling; alerts if exceeded</td></tr>
+                <tr><td><strong>Throughput (RPS)</strong></td><td>Completed requests / second at the gateway</td><td>Limited by provider TPM quota</td><td>Capacity planning, not user-visible</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Measure TTFT, not just E2E</div>
+        <p>E2E latency conflates the two phases. A 10-second response with TTFT of 200 ms feels fast because the user sees the stream starting immediately. A 3-second response with TTFT of 2.9 s feels slow. Set separate SLOs: TTFT p95 &le; 600 ms; TPS floor &ge; 25 tok/s. Use your gateway&rsquo;s span start &amp; first-chunk timestamps to compute these separately.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>Per-Task Cost Metric &mdash; Cost-per-Resolved-Ticket</h2>
+    <p>Raw token costs are meaningless without a business denominator. The right unit depends on the application, but the pattern is always the same: sum all LLM costs for a workflow and divide by the unit of business value delivered.</p>
+
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>Support bot</h4>
+            <p><strong>Metric:</strong> cost per resolved ticket<br>
+            <strong>Formula:</strong> &Sigma; (token costs across all LLM calls in the session) / (sessions that ended in resolution)<br>
+            <strong>Typical target:</strong> &lt;$0.05 / resolved ticket</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Code review bot</h4>
+            <p><strong>Metric:</strong> cost per PR reviewed<br>
+            <strong>Formula:</strong> &Sigma; (diff analysis + comment generation costs) / PRs reviewed<br>
+            <strong>Typical target:</strong> &lt;$0.20 / PR (scales with diff size)</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Document summariser</h4>
+            <p><strong>Metric:</strong> cost per page summarised<br>
+            <strong>Formula:</strong> total monthly LLM cost / total pages processed<br>
+            <strong>Typical target:</strong> &lt;$0.002 / page (at 500 tokens/page, Sonnet 3.5)</p>
+        </div>
+    </div>
+
+    <div class="code-block">
+        <div class="code-header">Computing cost-per-resolved-ticket from a Langfuse trace export</div>
+<pre><code><span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+df = pd.<span class="fn">read_csv</span>(<span class="str">"langfuse_traces_2025-04.csv"</span>)
+
+<span class="cm"># token_cost_usd already computed by Langfuse using its price table</span>
+session_cost = (
+    df.<span class="fn">groupby</span>(<span class="str">"session_id"</span>)
+    .agg(total_cost=(<span class="str">"token_cost_usd"</span>, <span class="str">"sum"</span>),
+         resolved=(<span class="str">"session_resolved"</span>, <span class="str">"max"</span>))
+    .<span class="fn">reset_index</span>()
+)
+
+resolved_only   = session_cost[session_cost[<span class="str">"resolved"</span>] == <span class="num">1</span>]
+cost_per_ticket = resolved_only[<span class="str">"total_cost"</span>].<span class="fn">mean</span>()
+
+print(<span class="fn">f</span><span class="str">"Cost per resolved ticket: ${cost_per_ticket:.4f}"</span>)
+print(<span class="fn">f</span><span class="str">"p95 session cost: ${resolved_only['total_cost'].quantile(0.95):.4f}"</span>)</code></pre>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Track the denominator too</div>
+        <p>Cost-per-ticket can <em>improve</em> because the bot resolves more tickets (good) or because it deflects customers who then call the phone line (bad). Always track both the per-task cost and the <em>task completion rate</em> together. A model change that halves cost but drops resolution rate by 30% is a net loss.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>Capacity Planning &mdash; Concurrency, Queue Depth</h2>
+    <p>Provider rate limits are measured in two orthogonal dimensions: requests per minute (RPM) and tokens per minute (TPM). Your capacity model must account for both, because hitting either limit degrades throughput.</p>
+
+    <h3>Key relationships</h3>
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Little&rsquo;s Law applied to LLMs</h4>
+            <p><strong>L = &lambda; &times; W</strong>, where:<br>
+            L = concurrent in-flight requests<br>
+            &lambda; = request arrival rate (req/s)<br>
+            W = mean response latency (s)</p>
+            <p>At 20 req/s with 5 s mean latency: L = 100 concurrent requests. If your provider allows 50 concurrent connections, you need queuing.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>TPM saturation</h4>
+            <p>For <code>gpt-4o</code> Tier 4: 800 K TPM. At 2000 tokens/request average: <strong>400 req/min</strong> maximum. At p95 latency of 6 s: concurrent in-flight = 400/60 &times; 6 = <strong>40 concurrent requests</strong>. Buffer 20% for bursts &rarr; size your connection pool at 48.</p>
+        </div>
+    </div>
+
+    <h3>Queue depth and backpressure</h3>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Queue depth</th><th>Signal</th><th>Action</th></tr></thead>
+            <tbody>
+                <tr><td>0&ndash;10% of burst capacity</td><td>Healthy</td><td>None; monitor</td></tr>
+                <tr><td>10&ndash;50%</td><td>Elevated load</td><td>Alert on-call; check if a provider is degraded</td></tr>
+                <tr><td>50&ndash;80%</td><td>Approaching limit</td><td>Shed low-priority traffic; enable fallback to secondary model</td></tr>
+                <tr><td>&gt;80%</td><td>Saturation</td><td>Return 503 to new requests; preserve capacity for in-flight SLA-bound requests</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Streaming and concurrency</div>
+        <p>Streaming responses hold a connection open for the full token-generation duration. A 300-token response at 50 tok/s = 6 seconds of held connection. With 100 concurrent streaming requests you need 100 persistent connections to the provider. Account for streaming in your connection pool sizing &mdash; it is typically 5&ndash;10&times; larger than for synchronous requests at equivalent RPS.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>Rate Limiting &mdash; Token Bucket, Fairness Across Tenants</h2>
+    <p>Rate limiting at the gateway protects both your provider quota and individual tenants from each other. Token bucket is the standard algorithm; it naturally handles bursty LLM traffic.</p>
+
+    <h3>Token bucket mechanics</h3>
+    <div class="diagram-flow">
+        <div class="diagram-box accent">Bucket capacity = B tokens</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box">Refill rate = R tokens/s</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box">Request arrives: costs C tokens</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box accent">if bucket &ge; C: admit &amp; deduct</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box dim">else: 429 + Retry-After: (C-bucket)/R</div>
+    </div>
+
+    <div class="code-block">
+        <div class="code-header">Redis-based token bucket (sliding window, Lua atomic)</div>
+<pre><code><span class="cm">-- Key: "rl:{tenant_id}"</span>
+<span class="cm">-- ARGV: request_tokens, bucket_capacity, refill_rate, now_ms</span>
+<span class="kw">local</span> key = KEYS[<span class="num">1</span>]
+<span class="kw">local</span> cost, cap, rate, now = <span class="fn">tonumber</span>(ARGV[<span class="num">1</span>]), <span class="fn">tonumber</span>(ARGV[<span class="num">2</span>]),
+                               <span class="fn">tonumber</span>(ARGV[<span class="num">3</span>]), <span class="fn">tonumber</span>(ARGV[<span class="num">4</span>])
+
+<span class="kw">local</span> vals = redis.<span class="fn">call</span>(<span class="str">"HMGET"</span>, key, <span class="str">"tokens"</span>, <span class="str">"ts"</span>)
+<span class="kw">local</span> tokens = <span class="fn">tonumber</span>(vals[<span class="num">1</span>]) <span class="kw">or</span> cap
+<span class="kw">local</span> ts     = <span class="fn">tonumber</span>(vals[<span class="num">2</span>]) <span class="kw">or</span> now
+
+<span class="kw">local</span> elapsed = (now - ts) / <span class="num">1000</span>        <span class="cm">-- seconds</span>
+tokens = <span class="fn">math.min</span>(cap, tokens + elapsed * rate)
+
+<span class="kw">if</span> tokens &lt; cost <span class="kw">then</span>
+    <span class="kw">return</span> {<span class="num">0</span>, <span class="fn">math.ceil</span>((cost - tokens) / rate * <span class="num">1000</span>)}  <span class="cm">-- {denied, retry_ms}</span>
+<span class="kw">end</span>
+redis.<span class="fn">call</span>(<span class="str">"HMSET"</span>, key, <span class="str">"tokens"</span>, tokens - cost, <span class="str">"ts"</span>, now)
+redis.<span class="fn">call</span>(<span class="str">"PEXPIRE"</span>, key, <span class="fn">math.ceil</span>(cap / rate * <span class="num">1000</span>))
+<span class="kw">return</span> {<span class="num">1</span>, <span class="num">0</span>}                                            <span class="cm">-- {admitted, 0}</span></code></pre>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Fairness: limit by output tokens, not requests</div>
+        <p>Limiting by request count is unfair: one tenant asking for 4096-token responses consumes the same quota slot as another asking for 50-token responses. Deduct <em>estimated output tokens</em> from the bucket at admission (estimate = min(max_tokens, 256)). Update the bucket with the <em>actual</em> token count on response. This is the approach used by LiteLLM&rsquo;s <code>max_tpm</code> per-key enforcement.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>SLO Design &mdash; Availability, Quality, Latency</h2>
+    <p>LLM SLOs must cover three dimensions that traditional services rarely track together. Define each independently with a separate error budget.</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>SLO dimension</th><th>Definition</th><th>Example target</th><th>Measurement</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Availability</strong></td><td>Fraction of requests that return a valid non-error response</td><td>99.5% / 30-day rolling window</td><td><code>http_requests_total{status!="5xx"} / http_requests_total</code></td></tr>
+                <tr><td><strong>Latency (TTFT)</strong></td><td>p95 TTFT &le; target across 1-hour windows</td><td>600 ms p95</td><td>Gateway span first-chunk timestamp minus request-received timestamp</td></tr>
+                <tr><td><strong>Latency (E2E)</strong></td><td>p99 E2E &le; target for &gt;95% of 1-hour windows</td><td>15 s p99</td><td>Gateway span end minus start</td></tr>
+                <tr><td><strong>Quality</strong></td><td>Fraction of responses scoring above eval threshold</td><td>&ge;85% score &ge;0.7 on automated eval</td><td>LLM-as-judge sampled at 5%; alert on 7-day rolling drop</td></tr>
+                <tr><td><strong>Finish reason</strong></td><td>Fraction of responses finishing with <code>stop</code> (not <code>length</code> or <code>content_filter</code>)</td><td>&ge;97% <code>stop</code> reason</td><td>Gateway response parser; alert on &gt;3% non-stop</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Error budget algebra</h3>
+    <div class="callout">
+        <div class="callout-label">30-day error budget</div>
+        <p>At 99.5% availability: <strong>budget = 30 &times; 24 &times; 60 &times; 0.005 = 216 minutes</strong> of allowed downtime. Burn rate alert: if you&rsquo;re consuming the budget 2&times; faster than the 30-day window allows (i.e. burn rate &gt; 2), alert the team even if you&rsquo;re still within budget. This gives lead time to investigate before the budget exhausts. Quality SLO uses the same algebra: 85% quality with 5% sampling rate means 0.15 &times; 5% = 0.75% of all requests can be bad &mdash; set your alert at 0.5% to leave headroom.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Budget Enforcement &mdash; Alerts, Hard Limits, Chargeback</h2>
+    <p>Uncontrolled LLM spend is one of the fastest ways to create a CFO incident. Budget enforcement must be automated &mdash; manual review of invoices is too slow when a runaway agent loop can spend $10 K in an hour.</p>
+
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>Soft alerts (warn)</h4>
+            <ul>
+                <li>Trigger at 50% and 80% of monthly budget</li>
+                <li>Send Slack alert to team channel</li>
+                <li>Log to PagerDuty at 80%</li>
+                <li>Include breakdown: top-3 cost-by-team, top-3 cost-by-model</li>
+                <li>No traffic impact; informational only</li>
+            </ul>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Hard limits (enforce)</h4>
+            <ul>
+                <li>At 95%: disable all non-SLA-bound traffic (background jobs, batch)</li>
+                <li>At 100%: gateway returns 429 for new requests from over-budget tenants</li>
+                <li>Exempt: production interactive traffic on SLA contracts</li>
+                <li>LiteLLM: <code>max_budget</code> + <code>budget_duration</code> per virtual key</li>
+            </ul>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Chargeback</h4>
+            <ul>
+                <li>Tag every request with <code>team</code>, <code>product</code>, <code>environment</code> at the gateway</li>
+                <li>Export hourly cost roll-ups to your internal BI (BigQuery / Redshift)</li>
+                <li>Allocate actual provider invoice proportionally to usage tags</li>
+                <li>Monthly: each team receives their LLM cost allocation for P&amp;L reporting</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="code-block">
+        <div class="code-header">Prometheus alerting rule &mdash; LLM spend burn rate</div>
+<pre><code><span class="type">groups</span>:
+  - <span class="type">name</span>: <span class="str">llm_budget</span>
+    <span class="type">rules</span>:
+      - <span class="type">alert</span>: <span class="str">LLMBudgetBurnRateHigh</span>
+        <span class="type">expr</span>: |
+          <span class="fn">rate</span>(llm_cost_usd_total[<span class="num">1h</span>]) * <span class="num">730</span> &gt; <span class="num">0.8</span> * llm_monthly_budget_usd
+        <span class="type">for</span>: <span class="num">10m</span>
+        <span class="type">labels</span>: {<span class="type">severity</span>: <span class="str">warning</span>}
+        <span class="type">annotations</span>:
+          <span class="type">summary</span>: <span class="str">"LLM spend burn rate will exhaust monthly budget"</span>
+          <span class="type">description</span>: <span class="str">"Projected monthly spend: {{ $value | humanizeCurrency }}"</span></code></pre>
+    </div>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>Forecasting &mdash; Usage Growth, Model-Cost Falls</h2>
+    <p>LLM cost forecasting has two competing trends that make it non-trivial: usage typically grows super-linearly with product adoption, but model prices fall &mdash; often 50&ndash;80% year-over-year. A good forecast models both.</p>
+
+    <h3>Historical model price evolution (input tokens, $/M)</h3>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Model generation</th><th>Flagship price (launch)</th><th>12 months later</th><th>&Delta;</th></tr></thead>
+            <tbody>
+                <tr><td>GPT-4 (2023-03)</td><td>$30.00 / M input</td><td>$10.00 / M input</td><td>&minus;67%</td></tr>
+                <tr><td>GPT-4-turbo (2023-11)</td><td>$10.00 / M input</td><td>$2.50 / M input (gpt-4o)</td><td>&minus;75%</td></tr>
+                <tr><td>Claude 3 Opus (2024-03)</td><td>$15.00 / M input</td><td>$3.00 / M input (Sonnet 3.5)</td><td>&minus;80%</td></tr>
+                <tr><td>GPT-4o (2024-05)</td><td>$5.00 / M input</td><td>$2.50 / M input</td><td>&minus;50%</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Forecast model</h3>
+    <div class="code-block">
+        <div class="code-header">Python &mdash; simple LLM cost forecast with usage growth + price decay</div>
+<pre><code><span class="kw">import</span> numpy <span class="kw">as</span> np
+
+monthly_tokens_now = <span class="num">500_000_000</span>       <span class="cm"># 500M tokens / month today</span>
+price_per_m_now    = <span class="num">2.50</span>              <span class="cm"># $/M input tokens (blended)</span>
+monthly_growth     = <span class="num">0.15</span>              <span class="cm"># 15% month-over-month usage growth</span>
+annual_price_decay = <span class="num">0.60</span>              <span class="cm"># prices fall 60% per year → 0.4× remaining</span>
+monthly_price_decay = annual_price_decay ** (<span class="num">1</span>/<span class="num">12</span>)
+
+months = np.<span class="fn">arange</span>(<span class="num">1</span>, <span class="num">13</span>)
+tokens = monthly_tokens_now * (<span class="num">1</span> + monthly_growth) ** months
+prices = price_per_m_now * monthly_price_decay ** months
+costs  = tokens / <span class="num">1e6</span> * prices
+
+<span class="kw">for</span> m, tok, p, c <span class="kw">in</span> <span class="fn">zip</span>(months, tokens, prices, costs):
+    print(<span class="fn">f</span><span class="str">"Month {m:2d}: {tok/1e9:.2f}B tokens, ${p:.2f}/M → ${c:,.0f}/mo"</span>)</code></pre>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Planning implication</div>
+        <p>Typical result: usage grows from 500 M to 2.2 B tokens over 12 months, but price per million falls from $2.50 to $1.25. Monthly cost increases from $1 250 to $2 750 &mdash; 2.2&times; growth despite 2&times; usage growth &mdash; because the price decay partially offsets the volume growth. Commit to reserved capacity only when token volumes are stable and predictable; keep the majority on pay-as-you-go while in high-growth phase.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>What to Take Away</h2>
+    <ul>
+        <li><strong>Cost = &Sigma; token categories &times; rate.</strong> Track cached-write, cached-read, uncached input, and output separately. Output tokens cost 4&times; input &mdash; minimise unnecessary generation length.</li>
+        <li><strong>Measure TTFT and TPS separately</strong> from E2E latency. Users feel TTFT; set a 600 ms p95 TTFT SLO independently from a 15 s p99 E2E SLO.</li>
+        <li><strong>Per-task cost</strong> (cost-per-resolved-ticket) is the metric that matters to the business. Track it alongside task completion rate &mdash; a cheaper model that resolves fewer tickets can be a net loss.</li>
+        <li><strong>Little&rsquo;s Law:</strong> L = &lambda;W. At 20 req/s and 5 s latency you need 100 concurrent connections. Size your provider connection pool accordingly, &times;1.2 for burst.</li>
+        <li><strong>Token bucket</strong> for rate limiting. Deduct estimated output tokens at admission; correct on response. Lua atomic in Redis. Return <code>Retry-After</code> calculated from bucket refill rate.</li>
+        <li><strong>Three SLO axes:</strong> availability (&ge;99.5%), latency (TTFT p95 + E2E p99), quality (&ge;85% on sampled eval). Separate error budgets for each.</li>
+        <li><strong>Budget enforcement:</strong> alert at 50%/80%, hard-cut non-SLA traffic at 95%, full 429 at 100%. Chargeback by team tag via gateway metadata.</li>
+        <li><strong>Forecast both curves:</strong> usage grows 15%+ MoM; prices fall ~60%/year. Use pay-as-you-go during high-growth; commit reserved capacity only when volumes stabilise.</li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-label">Series complete</div>
+        <p>This concludes the Production LLMOps series. The four decks cover the full operational stack: gateways (Deck 01), observability (Deck 02), caching &amp; routing (Deck 03), and cost &amp; SLOs (Deck 04). Return to the <a href="https://github.com/BrendanJamesLynskey/LLM_Hub_LLMOps">series index</a> for related material.</p>
+    </div>
+</section>
+
+<footer class="footer">
+    <p>Part of the <a href="https://github.com/BrendanJamesLynskey/LLM_Hub_LLMOps">Production LLMOps Series</a></p>
+    <p style="margin-top: 0.5rem; font-size: 0.8rem;"><a href="https://github.com/BrendanJamesLynskey/LLM_Hub_LLMOps">Back to Series Index</a></p>
+</footer>
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+</body>
+</html>
