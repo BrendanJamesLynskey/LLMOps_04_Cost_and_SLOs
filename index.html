@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html data-concept="signalbox" lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -399,9 +399,62 @@
     /* deck-mobile-fix:hero */ .hero{overflow:hidden}@supports (overflow-x:clip){.hero{overflow:visible;overflow-x:clip}}
     /* deck-mobile-fix:phone */ @media (max-width:640px){.diagram-box,.tier-fill,.section-divider>span,.action-btn{white-space:normal;overflow-wrap:anywhere}.diagram-grid>*,.diagram-panel,.diagram-box,.code-block,.callout,.metric,.control-group,.control-row>*,.pipeline-body,.roll-track>*,.tier-fill,.timeline-row>*{min-width:0;max-width:100%}p,li,a,code,td,th,.callout,.diagram-panel{overflow-wrap:break-word}pre{max-width:100%;overflow-x:auto}table{display:block;max-width:100%;overflow-x:auto}.katex-display,.bits,.canvas-wrap,.influence-map-wrapper,.timeline-track,div:has(>.bank-cell){max-width:100%;overflow-x:auto;overflow-y:hidden}select,input,img,video,iframe,.action-btn{max-width:100%}canvas{max-width:100%;height:auto}}
     </style>
+<style id="deck-concept">
+html[data-concept=signalbox] .hero{min-height:auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);column-gap:2.75rem;align-items:start;align-content:start;justify-items:start;text-align:left;max-width:1180px;margin:0 auto;padding:2rem 1.75rem 3.5rem}
+html[data-concept=signalbox] .hero::before,html[data-concept=signalbox] .hero::after{display:none}
+html[data-concept=signalbox] .hero>*{grid-column:1;margin-left:0;margin-right:0}
+html[data-concept=signalbox] .hero .series-label{display:none}
+html[data-concept=signalbox] .sb-head{grid-column:1/-1;width:100%;display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:.8rem;color:var(--text-secondary);border-bottom:1px solid var(--border);padding-bottom:.5rem;margin-bottom:2.25rem}
+html[data-concept=signalbox] .sb-head span:first-child{color:var(--text-primary)}
+html[data-concept=signalbox] .sb-head span:last-child{background:#d8d2c2;color:#1c1c1c;padding:0 .45rem;border-radius:2px}
+html[data-concept=signalbox] .hero h1{font-size:clamp(2rem,4.3vw,3.2rem);line-height:1.08;letter-spacing:-.015em;margin-bottom:1rem}
+html[data-concept=signalbox] .hero h1 .accent{color:var(--accent)}
+html[data-concept=signalbox] .hero .subtitle{max-width:none;margin-bottom:1.5rem}
+html[data-concept=signalbox] .hero .tags{justify-content:flex-start;gap:.25rem 1rem;margin-bottom:1.25rem}
+html[data-concept=signalbox] .tag{background:none;border:0;border-radius:0;padding:0;color:var(--text-primary);font-family:var(--font-mono);font-size:.8rem}
+html[data-concept=signalbox] .hero .tag::before{content:'';display:inline-block;width:.5em;height:.5em;border-radius:50%;margin-right:.4em;background:#7fd07a;vertical-align:.05em}
+html[data-concept=signalbox] .hero .tag:nth-child(3n)::before{background:#f0c24a}
+html[data-concept=signalbox] .hero .pipeline{justify-content:flex-start;margin-bottom:0}
+html[data-concept=signalbox] .pipeline-step{background:none;border:0;border-radius:0;padding:0;color:var(--text-secondary);font-family:var(--font-mono);font-size:.78rem}
+html[data-concept=signalbox] .sb-fig{grid-column:2;grid-row:2/span 6;width:100%;margin:0}
+html[data-concept=signalbox] .sb-fig figcaption{font-size:.88rem;line-height:1.5;color:var(--text-secondary);margin-top:.55rem}
+html[data-concept=signalbox] .concept-art{display:block;width:100%;height:auto;overflow:hidden;box-shadow:0 12px 28px rgba(0,0,0,.4);border-radius:4px}
+html[data-concept=signalbox] .concept-art .sb-panel{fill:#2f3b3a}
+html[data-concept=signalbox] .concept-art .sb-track{fill:none;stroke:#d8d2c2;stroke-width:4;stroke-linejoin:round;opacity:.55}
+html[data-concept=signalbox] .concept-art .sb-lit{stroke:#f4efe0;opacity:1;stroke:#fff7d6}
+html[data-concept=signalbox] .concept-art .sb-head{fill:#111}
+html[data-concept=signalbox] .concept-art .sb-post{stroke:#111;stroke-width:1.5}
+html[data-concept=signalbox] .concept-art .sb-r{fill:#e0473c}
+html[data-concept=signalbox] .concept-art .sb-g{fill:#7fd07a}
+html[data-concept=signalbox] .concept-art .sb-y{fill:#f0c24a}
+html[data-concept=signalbox] .concept-art .sb-plat{fill:#3e4c4a;stroke:#d8d2c2;stroke-width:1}
+html[data-concept=signalbox] .concept-art .sb-set{fill:#55664f;stroke:#fff7d6}
+html[data-concept=signalbox] .concept-art .sb-clear{fill:#4f5c5a}
+html[data-concept=signalbox] .concept-art .sb-occ{fill:#e0473c}
+html[data-concept=signalbox] .concept-art .sb-screen{fill:#1f2827;stroke:#d8d2c2;stroke-width:1.2}
+html[data-concept=signalbox] .concept-art .sb-win{fill:#2f3b3a;stroke:#8c9a97;stroke-width:1}
+html[data-concept=signalbox] .concept-art .sb-route{fill:none;stroke:#f0c24a;stroke-width:2;stroke-dasharray:5 4}
+html[data-concept=signalbox] .concept-art .sb-click{fill:#f0c24a}
+html[data-concept=signalbox] .concept-art text{font-family:var(--font-mono);font-size:9.5px;fill:#ece6d6}
+html[data-concept=signalbox] .concept-art .sb-cap{fill:#b9c4c1}
+html[data-concept=signalbox] .concept-art .sb-num{fill:#1c1c1c;font-weight:700}
+html[data-concept=signalbox] .slide-number{font-family:var(--font-mono);font-size:.78rem;font-weight:400;color:#1c1c1c;background:#d8d2c2;padding:0 .45rem;border-radius:2px;top:4.4rem;right:1.5rem;line-height:1.5}
+html[data-concept=signalbox] .slide h2{color:var(--text-primary);padding-right:3.5rem}
+html[data-concept=signalbox] .slide h2::after{content:'';display:block;width:5rem;height:4px;margin-top:.55rem;background:#fff7d6;opacity:.7;border-radius:2px}
+html[data-concept=signalbox] .callout .callout-label,html[data-concept=signalbox] .metric .metric-label{text-transform:none;letter-spacing:0;font-size:.82rem}
+html[data-concept=signalbox] .callout,html[data-concept=signalbox] .diagram-grid,html[data-concept=signalbox] .canvas-wrap,html[data-concept=signalbox] .control-panel,html[data-concept=signalbox] .diagram-panel,html[data-concept=signalbox] .metric,html[data-concept=signalbox] .btn,html[data-concept=signalbox] .tag{border-radius:2px}
+@media (max-width:820px){
+ html[data-concept=signalbox] .hero{grid-template-columns:minmax(0,1fr);padding:1.25rem 1rem 2.5rem}
+ html[data-concept=signalbox] .sb-fig{grid-column:1;grid-row:auto;order:10;margin-top:1.5rem}
+}
+</style>
 </head>
 <body>
 <header class="hero">
+<!-- deck-concept:start -->
+<div class="sb-head" aria-hidden="true"><span>Production LLMOps</span><span>Lever 04</span></div>
+<figure class="sb-fig"><svg class="concept-art" viewBox="0 0 440 270" role="img" aria-label="A board of service-level objectives with signal aspects" xmlns="http://www.w3.org/2000/svg"><rect class="sb-panel" width="440" height="270" rx="4"/><text class="sb-t sb-cap" x="30" y="34" text-anchor="start">objective</text><text class="sb-t sb-cap" x="250" y="34" text-anchor="start">example target</text><text class="sb-t" x="30" y="64" text-anchor="start">p50 TTFT</text><text class="sb-t" x="250" y="64" text-anchor="start">≤ 0.5 s</text><rect class="sb-head" x="375" y="54" width="10" height="11" rx="2"/><circle class="sb-g" cx="380" cy="59.5" r="3"/><line class="sb-post" x1="380" x2="380" y1="65" y2="68"/><text class="sb-t" x="30" y="100" text-anchor="start">p95 TTFT</text><text class="sb-t" x="250" y="100" text-anchor="start">≤ 1.5 s</text><rect class="sb-head" x="375" y="90" width="10" height="11" rx="2"/><circle class="sb-g" cx="380" cy="95.5" r="3"/><line class="sb-post" x1="380" x2="380" y1="101" y2="104"/><text class="sb-t" x="30" y="136" text-anchor="start">p99 TTFT</text><text class="sb-t" x="250" y="136" text-anchor="start">≤ 3 s</text><rect class="sb-head" x="375" y="126" width="10" height="11" rx="2"/><circle class="sb-y" cx="380" cy="131.5" r="3"/><line class="sb-post" x1="380" x2="380" y1="137" y2="140"/><text class="sb-t" x="30" y="172" text-anchor="start">error rate</text><text class="sb-t" x="250" y="172" text-anchor="start">≤ 0.5 %</text><rect class="sb-head" x="375" y="162" width="10" height="11" rx="2"/><circle class="sb-g" cx="380" cy="167.5" r="3"/><line class="sb-post" x1="380" x2="380" y1="173" y2="176"/><text class="sb-t" x="30" y="208" text-anchor="start">cost / 1k requests</text><text class="sb-t" x="250" y="208" text-anchor="start">budget</text><rect class="sb-head" x="375" y="198" width="10" height="11" rx="2"/><circle class="sb-r" cx="380" cy="203.5" r="3"/><line class="sb-post" x1="380" x2="380" y1="209" y2="212"/><text class="sb-t" x="30" y="252" text-anchor="start">example targets and aspects: the deck derives real ones</text></svg><figcaption>Cost and SLOs as a signal board: each objective shows an aspect, and red means act (example targets).</figcaption></figure>
+<!-- deck-concept:end -->
     <div class="series-label">Production LLMOps Series &mdash; Presentation 04</div>
     <h1>LLM <span class="accent">Cost &amp; SLOs</span></h1>
     <p class="subtitle">Token economics, TTFT / TPS / p95, per-task cost, capacity planning, rate limiting, SLO design, budget enforcement, and forecasting &mdash; the numbers that keep production healthy.</p>
